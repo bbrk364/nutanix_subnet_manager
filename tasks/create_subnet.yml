@@ -1,0 +1,36 @@
+---
+- name: CREATE SUBNET | Creating Subnet {{ subnet_name }}
+  uri:
+    url: "https://{{ prism_central }}:9440/api/nutanix/v3/subnets"
+    body: "{{ lookup('template', 'create-subnet.json.j2') }}"
+    method: POST
+    validate_certs: no
+    force_basic_auth: yes
+    body_format: json
+    headers:
+      cookie: "{{ session_cookie }}"
+    status_code: 202
+    return_content: yes
+  register: create_subnet_info
+  ignore_errors: yes
+
+- name: CREATE SUBNET | Debug Subnet Information
+  debug:
+    var: create_subnet_info
+  when: global_debug
+
+- name: CREATE SUBNET | Saving Task UUID
+  set_fact:
+    task_uuid: "{{ create_subnet_info.json.status.execution_context.task_uuid }}"
+
+- name: CREATE SUBNET | Task UUID
+  debug:
+    var: task_uuid
+
+- name: CREATE SUBNET | Setting Task Name
+  set_fact:
+    task_name: "create subnet"
+
+- name: CREATE SUBNET | Task Name
+  debug:
+    var: task_name

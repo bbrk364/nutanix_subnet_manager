@@ -1,0 +1,24 @@
+---
+- name: Disable Debugging If Undefined
+  set_fact:
+    global_debug: False
+  when: global_debug is undefined
+
+- name: Validating The Requested Subnet Action {{ subnet_action }}
+  assert:
+    that:
+      - subnet_action is defined
+      - subnet_action|lower == 'create' or 
+        subnet_action|lower == 'delete'
+    fail_msg: "AN INVALID SUBNET ACTION {{ subnet_action }} WAS ENTERED. VALID SUBNET ACTIONS ARE (CASE-INSENSITIVE): CREATE | DELETE"
+    success_msg: "The Requested Subnet Action Was Successfully Validated"
+
+- import_tasks: get_subnet_info.yml
+
+- import_tasks: create_subnet.yml
+  when: subnet_action|lower == "create"
+
+- import_tasks: delete_subnet.yml
+  when: subnet_action|lower == "delete"
+
+- import_tasks: get_task_status.yml

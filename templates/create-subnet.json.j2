@@ -1,0 +1,22 @@
+{
+  "spec": {
+    "resources": {
+      "subnet_type": "VLAN",
+      "vswitch_name": "br1",
+      "vlan_id": {{ vlan_id }}
+    },
+    "cluster_reference": {
+      "kind": "cluster",
+      "name": "{{ cluster_name }}",
+      "uuid": "{{ cluster_uuid }}"
+    },
+    "name": "{{ subnet_name }}"
+  },
+  "api_version": "3.1.0",
+  "metadata": {
+    "kind": "subnet",
+    "spec_version": 1,
+    "should_force_translate": true,
+    "categories": {}
+  }
+}

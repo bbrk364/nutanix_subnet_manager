@@ -1,0 +1,99 @@
+---
+- name: GET SUBNET INFO | Getting All Cluster Information
+  uri:
+    url: "https://{{ prism_central }}:9440/api/nutanix/v3/clusters/list"
+    body:
+      kind: cluster
+      length: 500
+      offset: 0
+      sort_order: ASCENDING
+      sort_attribute: ''
+    method: POST
+    validate_certs: no
+    force_basic_auth: yes
+    body_format: json
+    status_code: 200
+    user: "{{ prism_user }}"
+    password: "{{ prism_password }}"
+  register: all_cluster_info
+  ignore_errors: yes
+
+- name: GET SUBNET INFO | Save Session Cookie
+  set_fact:
+    session_cookie: "{{ all_cluster_info.set_cookie }}"
+
+- name: GET SUBNET INFO | Debug Session Cookie
+  debug:
+    var: session_cookie
+  when: global_debug
+
+- name: GET SUBNET INFO | Debug All Cluster Information
+  debug:
+    var: all_cluster_info
+  when: global_debug
+
+- name: GET SUBNET INFO | Searching For Cluster {{ cluster_name }}
+  set_fact:
+    cluster_uuid: "{{ item.metadata.uuid }}"
+  when: "item.spec.name == cluster_name"
+  loop: "{{ all_cluster_info.json.entities }}"
+
+- name: GET SUBNET INFO | Fail If A Cluster Named {{ cluster_name }} Was Not Found
+  fail:
+    msg: "A CLUSTER NAMED {{ cluster_name }} WAS NOT FOUND"
+  when: cluster_uuid is not defined
+
+- name: GET SUBNET INFO | Cluster UUID
+  debug:
+    var: cluster_uuid
+
+- name: GET SUBNET INFO | Checking If A Subnet With A VLAN ID Of {{ vlan_id }} Already Exists In {{ cluster_name }}
+  uri:
+    url: "https://{{ prism_central }}:9440/api/nutanix/v3/subnets/list"
+    body: "{{ lookup('template', 'check-subnet.json.j2') }}"
+    method: POST
+    validate_certs: no
+    force_basic_auth: yes
+    body_format: json
+    status_code: 200
+    headers:
+      cookie: "{{ session_cookie }}"
+    return_content: yes
+  register: vlan_info
+  ignore_errors: yes
+
+- name: GET SUBNET INFO | Debug VLAN Information
+  debug:
+    var: vlan_info
+  when: global_debug
+
+- name: GET SUBNET INFO | Saving Results
+  set_fact:
+    vlan_results: "{{ vlan_info.json.metadata.total_matches }}"
+
+- name: GET SUBNET INFO | VLAN Results
+  debug:
+    var: vlan_results
+
+- name: GET SUBNET INFO | Fail If A Subnet With A VLAN ID Of {{ vlan_id }} Already Exists In Cluster {{ cluster_name }} When Attempting To Create A Subnet
+  fail:
+    msg: "A SUBNET WITH VLAN ID {{ vlan_id }} ALREADY EXISTS IN CLUSTER {{ cluster_name }}"
+  when:
+    - subnet_action|lower == "create"
+    - vlan_results != "0"
+
+- name: GET SUBNET INFO | Ensure The Desired Subnet To Be Deleted Exists And Save Its UUID
+  block:
+    - name: GET SUBNET INFO | Fail If A Subnet With A VLAN ID Of {{ vlan_id }} Was Not Found In Cluster {{ cluster_name }} When Attempting To Delete A Subnet
+      fail:
+        msg: "A SUBNET WITH VLAN ID {{ vlan_id }} WAS NOT FOUND IN CLUSTER {{ cluster_name }}"
+      when: vlan_results == "0"
+
+    - name: GET SUBNET INFO | Saving VLAN UUID
+      set_fact:
+        vlan_uuid: "{{ vlan_info.json.entities.0.metadata.uuid }}"
+    
+    - name: GET SUBNET INFO | VLAN UUID
+      debug:
+        var: vlan_uuid
+  when: subnet_action|lower == "delete"
