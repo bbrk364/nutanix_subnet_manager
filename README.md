@@ -1,1 +1,0 @@
-# nutanix_subnet_manager
